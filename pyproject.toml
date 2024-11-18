@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "solta"
-version = "0.0.1"
+version = "0.0.3"
 authors = [
   { name="Jason W." },
 ]
@@ -19,6 +19,7 @@ classifiers = [
 dependencies = [
     "requests>=2.31.0",
     "pydantic>=2.0.0",
+    "watchdog>=3.0.0",
 ]
 
 [project.urls]
@@ -34,7 +35,7 @@ addopts = "-v -ra -q"
 [project.optional-dependencies]
 test = [
     "pytest>=7.0.0",
-    "pytest-asyncio>=0.24.0",
+    "pytest-asyncio>=0.23.0",
     "pytest-cov>=4.1.0",
 ]
 

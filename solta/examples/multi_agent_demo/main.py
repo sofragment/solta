@@ -1,122 +1,135 @@
 """
-Example demonstrating the Solta client system with multiple agents
+Multi-agent demo showcasing Solta framework features
 """
-from solta.core import Client, Agent, setup_agent
-from solta.core.tools import BaseTool
+import asyncio
+import time
+from solta.core import Client
 
-# Create the client
-client = Client(prefix="router")
-
-# Define a custom tool
-class CalculatorTool(BaseTool):
-    def __init__(self):
-        super().__init__(
-            name="calculator",
-            description="Performs basic calculations"
-        )
+def main():
+    """
+    Demonstrates:
+    1. Agent discovery and loading
+    2. Hot reloading
+    3. Inter-agent communication
+    4. Tool usage
+    """
     
-    async def execute(self, **kwargs):
-        operation = kwargs.get("operation")
-        a = kwargs.get("a", 0)
-        b = kwargs.get("b", 0)
-        
-        if operation == "add":
-            return {"result": a + b}
-        elif operation == "multiply":
-            return {"result": a * b}
-        else:
-            raise ValueError(f"Unknown operation: {operation}")
-
-# Define agents using the client decorator
-@client.agent
-class MathAgent(Agent):
-    def __init__(self):
-        super().__init__(name="MathAgent")
-        self.register_tool(CalculatorTool())
+    # Create client with agent discovery and hot reloading
+    client = Client(
+        prefix="demo_router",
+        agent_dirs=[
+            "solta/examples/multi_agent_demo/calculator_agent",
+            "solta/examples/multi_agent_demo/memory_agent"
+        ],
+        live_reload=True
+    )
     
-    @setup_agent
-    async def on_ready(self):
-        print(f"{self.name} is ready for calculations!")
-    
-    @setup_agent
-    async def on_message(self, message):
-        if "calculate" in message:
-            calc = message["calculate"]
-            if calc["operation"] == "add":
-                result = await self.tools["calculator"].execute(
-                    operation="add",
-                    a=calc["a"],
-                    b=calc["b"]
-                )
-                return {
-                    "type": "calculation",
-                    "result": result["result"]
-                }
-        return None
-
-@client.agent
-class MemoryAgent(Agent):
-    def __init__(self):
-        super().__init__(name="MemoryAgent")
-        self.memories = {}
-    
-    @setup_agent
-    async def on_ready(self):
-        print(f"{self.name} is ready to store memories!")
-    
-    @setup_agent
-    async def on_message(self, message):
-        if "store" in message:
-            key = message["store"]["key"]
-            value = message["store"]["value"]
-            self.memories[key] = value
-            return {
-                "type": "memory",
-                "status": "stored",
-                "key": key
-            }
-        elif "recall" in message:
-            key = message["recall"]["key"]
-            value = self.memories.get(key)
-            return {
-                "type": "memory",
-                "status": "recalled",
-                "key": key,
-                "value": value
-            }
-        return None
-
-# Example usage
-if __name__ == "__main__":
-    # Run the client
     try:
+        print("Starting Solta multi-agent demo...")
+        print("Press Ctrl+C to exit")
+        
+        # Example messages to demonstrate functionality:
+        """
+        # Calculator operations
+        calc_message = {
+            "calculate": {
+                "operation": "add",
+                "a": 5,
+                "b": 3
+            }
+        }
+        
+        # Memory operations
+        store_message = {
+            "memory": {
+                "operation": "store",
+                "key": "last_calculation",
+                "value": 8
+            }
+        }
+        
+        retrieve_message = {
+            "memory": {
+                "operation": "retrieve",
+                "key": "last_calculation"
+            }
+        }
+        
+        # List stored memories
+        list_message = {
+            "memory": {
+                "operation": "list"
+            }
+        }
+        """
+        
+        # Run the client
         client.run()
+        
     except KeyboardInterrupt:
         print("\nShutting down...")
-    
-    # Example messages (these would normally be sent while the client is running):
+    finally:
+        client.cleanup()
+
+def test_hot_reload():
     """
-    # Calculate something
-    message1 = {
-        "calculate": {
-            "operation": "add",
-            "a": 5,
-            "b": 3
-        }
-    }
+    Test hot reloading functionality.
     
-    # Store a memory
-    message2 = {
-        "store": {
-            "key": "favorite_number",
-            "value": 42
-        }
-    }
-    
-    # Recall a memory
-    message3 = {
-        "recall": {
-            "key": "favorite_number"
-        }
-    }
+    This function demonstrates how agents can be modified
+    while the client is running.
     """
+    client = Client(
+        prefix="test_router",
+        agent_dirs=[
+            "solta/examples/multi_agent_demo/calculator_agent",
+            "solta/examples/multi_agent_demo/memory_agent"
+        ],
+        live_reload=True
+    )
+    
+    async def run_test():
+        # Start client
+        await client.start()
+        
+        # Test calculator
+        calc_result = await client.process_message({
+            "calculate": {
+                "operation": "add",
+                "a": 5,
+                "b": 3
+            }
+        })
+        print("Calculator result:", calc_result)
+        
+        # Test memory
+        await client.process_message({
+            "memory": {
+                "operation": "store",
+                "key": "test",
+                "value": "hello"
+            }
+        })
+        
+        memory_result = await client.process_message({
+            "memory": {
+                "operation": "retrieve",
+                "key": "test"
+            }
+        })
+        print("Memory result:", memory_result)
+        
+        # Wait for potential file changes
+        await asyncio.sleep(5)
+        
+        await client._cleanup_async()
+    
+    try:
+        asyncio.run(run_test())
+    except KeyboardInterrupt:
+        print("\nTest interrupted...")
+
+if __name__ == "__main__":
+    main()
+    
+    # Uncomment to test hot reloading:
+    # test_hot_reload()
