@@ -1,76 +1,37 @@
 # solta: where building ai agents is a breeze (and fun) :>
 
-solta is a python framework for crafting ai agents that interact with the ollama api. inspired by discord.py’s cog system (because why reinvent good ideas?), solta makes creating, managing, and deploying ai agents modular and structured without sucking the fun out of it.
+solta is a python framework for crafting ai agents that interact with the ollama api. inspired by discord.py’s cog system (because why reinvent good ideas?), solta makes creating, managing, and deploying ai agents modular and structured without sucking the fun out of it. whether you’re building a chatbot, a digital butler, or an ai that just judges your Spotify playlist, solta’s got your back. :>
+---
+## features 🛠️
 
-# features
+•	**agent-based architecture**: build modular ai systems like a pro (or at least fake it convincingly).
 
-•🛠️ **agent-based architecture**: build modular ai systems like a pro.
-•🌐 **ollama api integration**: plug and play with your favorite model.
-•📋 **standardized structure**: because chaos is for your personal life, not your code.
-•🧩 **tool system**: extend your agent’s powers with custom tools.
-•🎯 **decorator-based commands**: easy-to-use, clean syntax for handling logic.
+•	**ollama api integration**: plug and play with your favorite model (or whichever one you can afford).
+
+•	**standardized structure**: because an organized project is a happy project.
+
+•	**tool system**: give your agents superpowers (tools, capes, whatever floats your boat).
+
+•	**decorator-based commands**: easy-to-use syntax so you can focus on the fun stuff.
 
 ---
-**installation** 🚀
+## what solta isn’t 🛑
 
-installing solta is easier than opening a jar of pickles (unless you’re a pickle-opener pro, in which case… it’s still easy):
-
-```bash
-pip install solta
-```
+•	**a magical solution**: you still have to write code, sorry.
+•	**a life coach**: but hey, you could build one with it.
+•	**perfect**: it’s still in alpha, so expect a few rough edges and some chaos. embrace the adventure.
 
 ---
-**basic usage** 🐍
+## why solta? 🤔
 
-here’s a quick peek at how to get your first agent up and running:
-
-```python
-from solta import Agent, setup_agent
-
-class MyAgent(Agent):
-    def __init__(self):
-        super().__init__()
-        
-    @setup_agent
-    async def on_ready(self):
-        print("agent is ready!")
-        
-    @setup_agent
-    async def on_message(self, message):
-        # handle incoming messages
-        pass
-```
+because ai should be fun, flexible, and a little bit chaotic. solta is for the dreamers, the builders, and the tinkerers who want to create something cool without getting bogged down by overly complicated frameworks or an existential crisis over variable names.
 
 ---
-**create and run your agent**
-```python
-agent = MyAgent()
-agent.run()
-```
-yes, it’s really that simple.
+## vibes and structure 🗂️
+
+solta projects are designed to keep your sanity intact. we won’t bore you with the full layout (check the docs for that), but rest assured, it’s clean, modular, and designed for maximum “wow, I actually understand this” energy.
 
 ---
-**project structure** 🗂️
+did you know that sloths can hold their breath longer than dolphins? yeah, we didn’t either. solta can’t do that, but it can help you build a sloth-themed chatbot if that’s your vibe. :>
 
-solta keeps things organized so you don’t lose your mind halfway through development. here’s the standard structure for your agent project:
-```
-your_agent/
-├── agent.py      # main agent logic
-├── tools.py      # custom tools for the agent
-└── setup.py      # agent configuration and setup
-```
-think of it as the ikea of project layouts—except with actual instructions.
-
----
-**documentation** 📚
-
-need more details? check out our [docs link] for the full breakdown of solta’s features, usage, and tips for making your ai agents smarter, faster, and cooler.
-
----
-**license** ⚖️
-
-solta is licensed under the mit license because we believe in open-source goodness. check out the license file for the fine print.
-
----
-
-did you know octopuses have three hearts, and two of them stop beating when they swim? also, solta has zero hearts, but if it did, it would beat for you. probably. :>
+if you’ve made it this far, congrats. now go build something amazing, weird, or hilariously unnecessary. solta’s ready for whatever you throw at it. happy coding! >:>
