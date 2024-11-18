@@ -32,15 +32,30 @@ class Agent(ABC):
         pass
     
     @abstractmethod
-    async def on_message(self, message: Dict[str, Any]) -> None:
-        """Called when the agent receives a message."""
+    async def on_message(self, message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Called when the agent receives a message.
+        
+        Args:
+            message: The message to process
+            
+        Returns:
+            Optional response dictionary
+        """
         pass
     
     async def cleanup(self) -> None:
         """Cleanup resources before shutdown."""
         # Clean up all tools
-        for tool in self.tools.values():
+        for tool in list(self.tools.values()):
             await tool.cleanup()
+        
+        # Clear tool references
+        self.tools.clear()
+        
+        # Clear any instance-specific data
+        self.config.clear()
+        
         # Reset ready state
         self._is_ready = False
     
@@ -52,3 +67,8 @@ class Agent(ABC):
     def configure(self, **kwargs) -> None:
         """Configure the agent with the provided settings."""
         self.config.update(kwargs)
+    
+    @property
+    def is_ready(self) -> bool:
+        """Check if the agent is initialized and ready."""
+        return self._is_ready
