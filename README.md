@@ -2,6 +2,13 @@
 
 solta is a python framework for crafting ai agents that interact with the ollama api. inspired by discord.py’s cog system (because why reinvent good ideas?), solta makes creating, managing, and deploying ai agents modular and structured without sucking the fun out of it.
 
+---
+# current release: v0.0.2 🚧
+
+solta is currently in its alpha phase, which means it’s still stretching its legs and figuring things out. we’re not quite on PyPI yet (soon™, we promise), so for now, you’ll need to clone the repo and run with it manually. consider this the wild west of development—exciting, unpredictable, and probably full of bugs. yeehaw. >:>
+
+if you’re here, congrats! you’re an early adopter. we salute your bravery. keep your feedback coming, and let’s build something amazing together. :>
+
 # features
 
 •🛠️ **agent-based architecture**: build modular ai systems like a pro.
