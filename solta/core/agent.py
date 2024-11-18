@@ -1,24 +1,32 @@
 """
 Base Agent class for Solta framework
 """
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union, AsyncGenerator
 from abc import ABC, abstractmethod
+from .ai_providers import AIProvider, default_provider
 
 class Agent(ABC):
     """
     Base class for all Solta agents.
     
     This class provides the foundation for creating AI agents that can interact
-    with the Ollama API. It handles basic lifecycle management and provides
-    hooks for customization.
+    with various AI providers (Ollama, OpenAI, etc.). It handles basic lifecycle
+    management and provides hooks for customization.
     """
     
-    def __init__(self, name: Optional[str] = None, model: str = "llama2"):
+    def __init__(
+        self,
+        name: Optional[str] = None,
+        model: str = "llama2",
+        ai_provider: Optional[AIProvider] = None,
+        **kwargs
+    ):
         self.name = name or self.__class__.__name__
         self.model = model
         self.tools = {}
-        self.config = {}
+        self.config = kwargs
         self._is_ready = False
+        self.ai_provider = ai_provider or default_provider
         
     async def initialize(self) -> None:
         """Initialize the agent and its resources."""
@@ -43,6 +51,32 @@ class Agent(ABC):
             Optional response dictionary
         """
         pass
+    
+    async def generate(
+        self,
+        prompt: str,
+        stream: bool = False,
+        **kwargs
+    ) -> Union[Dict[str, Any], AsyncGenerator[Dict[str, Any], None]]:
+        """
+        Generate a response using the configured AI provider.
+        
+        Args:
+            prompt: Input prompt
+            stream: Whether to stream the response
+            **kwargs: Additional parameters for the AI provider
+            
+        Returns:
+            AI provider response or async generator for streaming
+        """
+        # Merge instance config with call-specific kwargs
+        params = {**self.config, **kwargs}
+        params["model"] = kwargs.get("model", self.model)
+        
+        if stream:
+            return self.ai_provider.stream_generate(prompt, **params)
+        else:
+            return await self.ai_provider.generate(prompt, **params)
     
     async def cleanup(self) -> None:
         """Cleanup resources before shutdown."""

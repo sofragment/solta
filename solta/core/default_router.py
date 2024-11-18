@@ -1,22 +1,24 @@
 """
-Router agent implementation for Solta framework
+Default router implementation for Solta framework
 """
 from typing import Dict, Any, Optional, List
 from .agent import Agent
 from .decorators import setup_agent
 
-class RouterAgent(Agent):
+class DefaultRouter(Agent):
     """
-    Router agent that handles message routing between agents.
+    Default router that handles basic message routing between agents.
     
-    This agent:
-    1. Receives all incoming messages
-    2. Determines appropriate agent(s) to handle each message
-    3. Manages message priority and queuing
-    4. Handles conversation context
+    This router provides:
+    1. Simple message broadcasting
+    2. Basic conversation history
+    3. Error handling
+    
+    For more complex routing needs, users can implement their own router
+    by creating a custom Agent class.
     """
     
-    def __init__(self, name: str = "Router", model: str = "llama2"):
+    def __init__(self, name: str = "DefaultRouter", model: str = "llama2"):
         super().__init__(name=name, model=model)
         self.routes: Dict[str, List[Agent]] = {}
         self.conversation_history: List[Dict[str, Any]] = []
@@ -34,13 +36,13 @@ class RouterAgent(Agent):
         self.routes[pattern].append(agent)
         
     async def route_message(self, message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Route a message to appropriate agent(s)."""
+        """Route a message to all registered agents."""
         # Store in conversation history
         self.conversation_history.append(message)
         if len(self.conversation_history) > self.max_history:
             self.conversation_history.pop(0)
         
-        # Get all registered agents for broadcasting
+        # Get all registered agents
         all_agents = set()
         for agents in self.routes.values():
             all_agents.update(agents)

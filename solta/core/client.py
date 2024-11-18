@@ -5,9 +5,10 @@ from typing import Dict, Optional, Type, List, Any, Union
 import asyncio
 import inspect
 from pathlib import Path
+import importlib.util
 
 from .agent import Agent
-from .router import RouterAgent
+from .default_router import DefaultRouter  # Fixed import
 from .loader import AgentLoader
 from .decorators import setup_agent
 
@@ -22,39 +23,85 @@ class Client:
     4. Configuration management
     
     Example:
+        # Using default router
         client = Client(
-            prefix="router",
+            router="default",
             agent_dirs=["my_agents"],
             live_reload=True
+        )
+        
+        # Using custom router
+        client = Client(
+            router="path/to/custom_router.py",
+            agent_dirs=["my_agents"]
         )
     """
     
     def __init__(
         self,
-        prefix: str = "router",
+        router: str = "default",
         agent_dirs: Optional[List[str]] = None,
         live_reload: bool = False,
         **config
     ):
-        self.prefix = prefix
         self.config = config
         self.agent_dirs = agent_dirs or []
         self.live_reload = live_reload
         self.agents: Dict[str, Agent] = {}
         self._ready = False
-        self._router: Optional[RouterAgent] = None
+        self._router: Optional[Agent] = None
         self._loop = None
         self._loader = AgentLoader(self)
         
-    def agent(self, cls: Type[Agent]) -> Type[Agent]:
-        """
-        Decorator to register an agent class.
+        # Initialize router
+        self._init_router(router)
         
-        Example:
-            @client.agent
-            class MyAgent(Agent):
-                pass
+    def _init_router(self, router: str) -> None:
         """
+        Initialize the router based on configuration.
+        
+        Args:
+            router: Either "default" or path to custom router implementation
+        """
+        if router == "default":
+            self._router = DefaultRouter()
+        else:
+            # Load custom router from file
+            try:
+                router_path = Path(router)
+                if not router_path.exists():
+                    raise ValueError(f"Router file not found: {router}")
+                
+                # Import the router module
+                spec = importlib.util.spec_from_file_location(
+                    "custom_router",
+                    router_path
+                )
+                if spec is None or spec.loader is None:
+                    raise ImportError(f"Could not load router from {router}")
+                
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                
+                # Find router class
+                router_class = None
+                for item_name, item in inspect.getmembers(module):
+                    if (inspect.isclass(item) and 
+                        issubclass(item, Agent) and 
+                        item != Agent):
+                        router_class = item
+                        break
+                
+                if router_class is None:
+                    raise ValueError(f"No router class found in {router}")
+                
+                self._router = router_class()
+                
+            except Exception as e:
+                raise RuntimeError(f"Error loading custom router: {str(e)}")
+    
+    def agent(self, cls: Type[Agent]) -> Type[Agent]:
+        """Decorator to register an agent class."""
         if not inspect.isclass(cls) or not issubclass(cls, Agent):
             raise TypeError("Decorator must be applied to an Agent class")
         
@@ -62,14 +109,9 @@ class Client:
         self.agents[cls.__name__] = cls
         return cls
     
-    async def _initialize_router(self) -> None:
-        """Initialize the router agent."""
-        self._router = RouterAgent(name=self.prefix)
-        await self._router.initialize()
-    
     async def load_agents(self) -> None:
         """Load all registered agents."""
-        # Initialize agents from decorator registration
+        # Initialize agents
         initialized_agents = {}
         for name, agent_cls in self.agents.items():
             try:
@@ -118,44 +160,40 @@ class Client:
     
     async def reload_agent(self, agent_cls: Type[Agent]) -> None:
         """
-        Reload an agent instance.
+        Reload an agent with an updated class.
         
         Args:
-            agent_cls: Updated agent class to reload
+            agent_cls: Updated agent class
         """
         if not self.live_reload:
             return
             
-        name = agent_cls.__name__
-        old_agent = self.agents.get(name)
-        
-        if old_agent:
-            # Cleanup old agent
-            await old_agent.cleanup()
+        try:
+            # Clean up old agent if it exists
+            old_agent = self.agents.get(agent_cls.__name__)
+            if old_agent:
+                await old_agent.cleanup()
             
-            try:
-                # Initialize new agent
-                new_agent = agent_cls()
-                await new_agent.initialize()
-                
-                # Update registrations
-                self.agents[name] = new_agent
-                self._router.register_route(name.lower(), new_agent)
-                
-                print(f"Successfully reloaded agent: {name}")
-                
-            except Exception as e:
-                print(f"Failed to reload agent {name}: {e}")
-                # Restore old agent if reload fails
-                self.agents[name] = old_agent
+            # Initialize new agent
+            new_agent = agent_cls()
+            await new_agent.initialize()
+            
+            # Update client and router
+            self.agents[agent_cls.__name__] = new_agent
+            self._router.register_route(agent_cls.__name__.lower(), new_agent)
+            
+            print(f"Reloaded agent: {agent_cls.__name__}")
+            
+        except Exception as e:
+            print(f"Failed to reload agent {agent_cls.__name__}: {e}")
     
     async def start(self) -> None:
         """Initialize and start the client."""
         if self._ready:
             return
         
-        # Initialize router first
-        await self._initialize_router()
+        # Initialize router
+        await self._router.initialize()
         
         # Load decorator-registered agents
         await self.load_agents()
@@ -170,7 +208,7 @@ class Client:
         
         self._ready = True
         print(f"Client ready with {len(self.agents)} agents")
-        
+    
     def run(self) -> None:
         """Run the client (blocking)."""
         try:
@@ -187,7 +225,7 @@ class Client:
         # Stop file watching if enabled
         self._loader.stop_watching()
         
-        # Clean up router first
+        # Clean up router
         if self._router is not None:
             await self._router.cleanup()
             self._router = None
@@ -222,7 +260,7 @@ class Client:
             except:
                 pass
             self._loop = None
-        
+    
     async def process_message(self, message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Process an incoming message through the router."""
         if not self._ready:

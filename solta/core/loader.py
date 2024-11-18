@@ -3,6 +3,7 @@ Agent loading and discovery system for Solta framework
 """
 import os
 import sys
+import asyncio
 import importlib.util
 import inspect
 from pathlib import Path
@@ -26,17 +27,35 @@ class AgentWatcher(FileSystemEventHandler):
     def __init__(self, loader: 'AgentLoader'):
         self.loader = loader
         self.processing = False
+        self._loop = None
+    
+    def _get_event_loop(self):
+        """Get or create an event loop."""
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        return loop
     
     def on_modified(self, event):
         if event.is_directory or self.processing:
             return
             
-        if event.src_path.endswith(('.py')):
+        if event.src_path.endswith('.py'):
             self.processing = True
             try:
-                self.loader.reload_agent_file(event.src_path)
+                loop = self._get_event_loop()
+                loop.run_until_complete(self._handle_modified(event))
             finally:
                 self.processing = False
+    
+    async def _handle_modified(self, event):
+        """Handle file modification event."""
+        try:
+            await self.loader.reload_agent_file(event.src_path)
+        except Exception as e:
+            print(f"Error reloading agent: {e}")
 
 class AgentLoader:
     """
@@ -55,6 +74,7 @@ class AgentLoader:
         self.agent_paths: Dict[str, str] = {}
         self.dependencies: Dict[str, Set[str]] = {}
         self.observer: Optional[Observer] = None
+        self._loop = None
     
     def start_watching(self, directories: List[str]) -> None:
         """Start watching directories for changes."""
@@ -65,7 +85,10 @@ class AgentLoader:
         handler = AgentWatcher(self)
         
         for directory in directories:
-            self.observer.schedule(handler, directory, recursive=True)
+            try:
+                self.observer.schedule(handler, directory, recursive=True)
+            except Exception as e:
+                print(f"Error watching directory {directory}: {e}")
         
         self.observer.start()
     
@@ -90,7 +113,8 @@ class AgentLoader:
         directory_path = Path(directory)
         
         if not directory_path.exists():
-            raise AgentLoadError(f"Directory not found: {directory}")
+            print(f"Warning: Directory not found: {directory}")
+            return agent_files
         
         for item in directory_path.rglob("*"):
             if item.is_file():
@@ -113,7 +137,7 @@ class AgentLoader:
         """
         try:
             # Import the module
-            module_name = f"solta_agent_{Path(file_path).stem}"
+            module_name = f"solta_agent_{Path(file_path).stem}_{hash(file_path)}"
             spec = importlib.util.spec_from_file_location(module_name, file_path)
             if spec is None or spec.loader is None:
                 raise AgentLoadError(f"Could not load spec for {file_path}")
@@ -129,15 +153,16 @@ class AgentLoader:
                     issubclass(item, Agent) and 
                     item != Agent):
                     agents.append(item)
-                    self.loaded_agents[item_name] = item
-                    self.agent_paths[item_name] = file_path
+                    unique_name = f"{item_name}_{hash(file_path)}"
+                    self.loaded_agents[unique_name] = item
+                    self.agent_paths[unique_name] = file_path
             
             return agents
             
         except Exception as e:
             raise AgentLoadError(f"Error loading {file_path}: {str(e)}")
     
-    def reload_agent_file(self, file_path: str) -> None:
+    async def reload_agent_file(self, file_path: str) -> None:
         """
         Reload agents from a modified file.
         
@@ -159,7 +184,7 @@ class AgentLoader:
             
             # Update the client's agents
             for agent_cls in updated_agents:
-                self.client.reload_agent(agent_cls)
+                await self.client.reload_agent(agent_cls)
                 
         except Exception as e:
             raise AgentReloadError(f"Error reloading {file_path}: {str(e)}")
