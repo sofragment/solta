@@ -99,18 +99,18 @@
 
 ## Version Milestones
 
-### v0.1.0 (Completed)
+### v0.0.1 (Completed)
 - [x] Basic agent system
 - [x] Tool framework
 - [x] Example implementation
 
-### v0.2.0 (Current)
+### v0.0.2 (Current)
 - [x] Client implementation
 - [x] Router agent
 - [x] Basic agent loading system
 - [ ] Basic Ollama integration
 
-### v0.3.0 (Next)
+### v0.0.3 (Next)
 - [ ] Advanced conversation management
 - [ ] Enhanced tool system
 - [ ] CLI tools
